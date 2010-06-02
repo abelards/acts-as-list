@@ -176,7 +176,7 @@ module ActsAsList
       end
 
       def add_to_list_bottom
-        puts "########  position: #{self[position_column]}"
+        #puts "########  position: #{self[position_column]}"
         # only override 
         if self[position_column].nil?
           self[position_column] = bottom_position_in_list.to_i + 1

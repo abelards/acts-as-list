@@ -1,6 +1,9 @@
-acts-as-list.gemspec
-lib/acts_as_list.rb
 Manifest
 README
+Rakefile
+acts-as-list.gemspec
+lib/acts_as_list.rb
+pkg/acts-as-list-0.1.2.gem
 tasks/deployment.rake
 test/list_test.rb
+vilango-acts-as-list.gemspec
