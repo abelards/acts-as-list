@@ -24,8 +24,8 @@ module ActsAsList
     # Configuration options are:
     #
     # * +column+ - specifies the column name to use for keeping the position integer (default: +position+)
-    # * +scope+ - restricts what is to be considered a list. Given a symbol, it'll attach <tt>_id</tt> 
-    #   (if it hasn't already been added) and use that as the foreign key restriction. It's also possible 
+    # * +scope+ - restricts what is to be considered a list. Given a symbol, it'll attach <tt>_id</tt>
+    #   (if it hasn't already been added) and use that as the foreign key restriction. It's also possible
     #   to give it an entire string that is interpolated if you need a tighter scope than just a foreign key.
     #   Example: <tt>acts_as_list :scope => 'todo_list_id = #{todo_list_id} AND completed = 0'</tt>
     def acts_as_list(options = {})
@@ -56,7 +56,11 @@ module ActsAsList
         end
 
         def position_column
-          '#{configuration[:column]}'
+          '`#{table_name}`.`#{configuration[:column]}`'
+        end
+
+        def position_method
+          :#{configuration[:column]}
         end
 
         #{scope_condition_method}
@@ -82,7 +86,7 @@ module ActsAsList
       lower = lower_item
       return unless lower
       acts_as_list_class.transaction do
-        self.update_attribute(position_column, lower.send(position_column))
+        self.update_attribute(position_method, lower.send(position_method))
         lower.decrement_position
       end
     end
@@ -92,7 +96,7 @@ module ActsAsList
       higher = higher_item
       return unless higher
       acts_as_list_class.transaction do
-        self.update_attribute(position_column, higher.send(position_column))
+        self.update_attribute(position_method, higher.send(position_method))
         higher.increment_position
       end
     end
@@ -121,39 +125,39 @@ module ActsAsList
     def remove_from_list
       if in_list?
         decrement_positions_on_lower_items
-        update_attribute position_column, nil
+        update_attribute position_method, nil
       end
     end
 
     # Increase the position of this item without adjusting the rest of the list.
     def increment_position
       return unless in_list?
-      update_attribute position_column, self.send(position_column).to_i + 1
+      update_attribute position_method, self.send(position_method).to_i + 1
     end
 
     # Decrease the position of this item without adjusting the rest of the list.
     def decrement_position
       return unless in_list?
-      update_attribute position_column, self.send(position_column).to_i - 1
+      update_attribute position_method, self.send(position_method).to_i - 1
     end
 
     # Return +true+ if this object is the first in the list.
     def first?
       return false unless in_list?
-      self.send(position_column) == 1
+      self.send(position_method) == 1
     end
 
     # Return +true+ if this object is the last in the list.
     def last?
       return false unless in_list?
-      self.send(position_column) == bottom_position_in_list
+      self.send(position_method) == bottom_position_in_list
     end
 
     # Return the next higher item in the list.
     def higher_item
       return nil unless in_list?
       acts_as_list_class.find(:first, :conditions =>
-        "#{scope_condition} AND #{position_column} < #{send(position_column).to_s}", :order => "#{position_column} DESC"
+        "#{scope_condition} AND #{position_column} < #{send(position_method).to_s}", :order => "#{position_column} DESC"
       )
     end
 
@@ -161,13 +165,13 @@ module ActsAsList
     def lower_item
       return nil unless in_list?
       acts_as_list_class.find(:first, :conditions =>
-        "#{scope_condition} AND #{position_column} > #{send(position_column).to_s}", :order => "#{position_column} ASC"
+        "#{scope_condition} AND #{position_column} > #{send(position_method).to_s}", :order => "#{position_column} ASC"
       )
     end
 
     # Test if this record is in a list
     def in_list?
-      !send(position_column).nil?
+      !send(position_method).nil?
     end
 
     private
@@ -176,10 +180,10 @@ module ActsAsList
       end
 
       def add_to_list_bottom
-        #puts "########  position: #{self[position_column]}"
-        # only override 
-        if self[position_column].nil?
-          self[position_column] = bottom_position_in_list.to_i + 1
+        #puts "########  position: #{self[position_method]}"
+        # only override
+        if self[position_method].nil?
+          self[position_method] = bottom_position_in_list.to_i + 1
         end
       end
 
@@ -190,24 +194,24 @@ module ActsAsList
       #   bottom_position_in_list    # => 2
       def bottom_position_in_list(except = nil)
         item = bottom_item(except)
-        item ? item.send(position_column) : 0
+        item ? item.send(position_method) : 0
       end
 
       # Returns the bottom item
       def bottom_item(except = nil)
         conditions = scope_condition
-        conditions = "#{conditions} AND #{self.class.primary_key} != #{except.id}" if except
+        conditions = "#{conditions} AND `#{self.class.table_name}`.`#{self.class.primary_key}` != #{except.id}" if except
         acts_as_list_class.find(:first, :conditions => conditions, :order => "#{position_column} DESC")
       end
 
       # Forces item to assume the bottom position in the list.
       def assume_bottom_position
-        update_attribute(position_column, bottom_position_in_list(self).to_i + 1)
+        update_attribute(position_method, bottom_position_in_list(self).to_i + 1)
       end
 
       # Forces item to assume the top position in the list.
       def assume_top_position
-        update_attribute(position_column, 1)
+        update_attribute(position_method, 1)
       end
 
       # This has the effect of moving all the higher items up one.
@@ -250,7 +254,7 @@ module ActsAsList
       def insert_at_position(position)
         remove_from_list
         increment_positions_on_lower_items(position)
-        self.update_attribute(position_column, position)
+        self.update_attribute(position_method, position)
       end
   end
 end
